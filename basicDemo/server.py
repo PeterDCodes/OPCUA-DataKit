@@ -8,9 +8,7 @@ from asyncua import Server, ua
 from asyncua.common.methods import uamethod
 
 
-@uamethod
-def func(parent, value):
-    return value * 2
+
 
 
 async def main():
@@ -32,9 +30,19 @@ async def main():
     # populating our address space that was defined above
     # server.nodes, contains links to very common nodes like objects and root
     myobj = await server.nodes.objects.add_object(idx, "MyObject") #an object is created. This object node is added to my server
-    myvar = await myobj.add_variable(idx, "MyVariable", 6.7) #a variable is created and added to myobj that was just created
-    # Set MyVariable to be writable by clients
+    myvar = await myobj.add_variable(idx, "MyVariable", "Hello") #a variable is created and added to myobj that was just created
+    # Set the variable to be writable by clients. By default variables are 'read-only' so this is needed to enable writing.
     await myvar.set_writable()
+
+    #The above code is sufficient to create a server to run and expose some basic data
+
+    
+    #This defines a method that is callable by clients connected to the server
+    #Here a decorator function is used
+    @uamethod
+    def func(parent, value):
+        return value
+    #Here, the function that is decorated with uamethod decorator above is created and registered on the server
     await server.nodes.objects.add_method(
         ua.NodeId("ServerMethod", idx),
         ua.QualifiedName("ServerMethod", idx),
@@ -42,12 +50,13 @@ async def main():
         [ua.VariantType.Int64],
         [ua.VariantType.Int64],
     )
-    async with server:
-        while True:
-            await asyncio.sleep(1)
-            new_val = await myvar.get_value() + 0.1
-            await myvar.write_value(new_val)
 
+
+    async with server: #server is used to be the context manager for async
+        while True: #this is used to keep server alive and running
+            await asyncio.sleep(1) #this line is the key for managing asyncronous tasks. 
+            #It basically allows the infinite loop to keep running without using CPU resources. This main loop is infinite but "pauses" while not pausing other functions or tasks
+            #this is a common design patter used in programming for applications that often do a lot of 'waiting' for external tasks to happen.
 
 if __name__ == "__main__":
-    asyncio.run(main(), debug=True)
+     asyncio.run(main(), debug=True)
